@@ -90,26 +90,6 @@ for j = linspace(1, length(x)-1, length(x)-1)
 end
 
 %%
-
-angle = linspace(0, 2*pi, N);
-r = 5;
-x = r*cos(angle);
-y = r*sin(angle);
-theta_r = angle + pi/2;
-
-
-figure(123)
-xlim([-10 10])
-ylim([-10 10])
-hold on;
-plot(x, y, 'LineStyle',':', 'Color','blue');
-plot(5, 0, 'go');
-text(5.5, 0, "Origen/Destino");
-title("Ruta descrita para el robot y el tráiler")
-xlabel("$X_I$ [m]",'Interpreter','latex')
-ylabel("$Y_I$ [m]",'Interpreter','latex')
-
-%%
 %Definicion de ruta (Ruta recta)
 clc; clear;
 close all;
