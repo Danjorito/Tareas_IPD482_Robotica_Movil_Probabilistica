@@ -1,0 +1,1 @@
+Para correr este item se debe tener abierto el archivo "PruebaAngulo.ttt" con coppelia, luego se debe posicionar el carrito como se desee para estimar angulo, luego con el archivo "main.m" de Matlab abierto se debe correr la primera y segunda sección seguido de la sección con el método que se quiera probar hay secciones separadas para probarlo con o sin ruido.
