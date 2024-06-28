@@ -1,1 +1,3 @@
-Para correr este item se debe tener abierto el archivo "PruebaAngulo.ttt" con coppelia, luego se debe posicionar el carrito como se desee para estimar angulo, luego con el archivo "main.m" de Matlab abierto se debe correr la primera y segunda sección seguido de la sección con el método que se quiera probar hay secciones separadas para probarlo con o sin ruido.
+Para correr la versión offline solo es necesario ejecutar todas las secciones del archivo "KalmanOffline.m". Las instrucciones de como usar las mediciones con o sin ruido se encuentran en el mismo codigo en comentarios.
+
+Para correr la versión online se tiene que abrir la escena de coppelia correr la simulación en coppelia y con esta corriendo correr todas las secciones del archivo "KalmanOnline.m".  Las instrucciones de como usar las mediciones con o sin ruido se encuentran en el mismo codigo en comentarios.
