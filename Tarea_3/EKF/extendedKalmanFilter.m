@@ -61,9 +61,9 @@ landmark_3 = [0,0];
 landmark_4 = [0,0];
 landmark_5 = [0,0];
 
-init_x      = 0;
+init_x      = -4;
 init_y      = 0;
-init_theta  = 0;    % persona1: Radianes o Grados? persona2: si persona3: 🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️ Radianes RAHHHHH !!!!!!!!!!!!!!!!!!!!! 🔥🔥🔥🔥🔥 PERSONA MENTIONED????????????????????????? 🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🔥🔥🔥🔥🔥🔥🔥
+init_theta  = pi/2;    % persona1: Radianes o Grados? persona2: si persona3: 🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️ Radianes RAHHHHH !!!!!!!!!!!!!!!!!!!!! 🔥🔥🔥🔥🔥 PERSONA MENTIONED????????????????????????? 🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🔥🔥🔥🔥🔥🔥🔥
 
 sigma_r     = 0.1;
 sigma_phi   = 0.1;
@@ -104,17 +104,25 @@ v_r = (L*w + 2*v)/(2); % right motor velocity
 v_l = (2*v - L*w)/(2); % left  motor velocity
 T_k = 0.1;
 % Main loop
+figure;
+
+mu = mu_0;
+sigma = sigma_0;
+
 for i=1:N_points
-    
+    %clf; % Limpiar la figura para dibujar la nueva pose
+    hold on;
+
     if i ~= 1   
         
         point_cloud = get_lidar_measurement(vrep, vrep_id, camhandle);
         obstacles = Apply_DBScan(point_cloud);
         obstacles_centers = get_obstacle_centers(obstacles);
-        
+        z_t = get_z_from_obstacle_centers(mu, obstacles_centers, point_cloud)
+
         if mod(i, 10) == 0
-            figure(floor(i/5));
-            hold on;
+            %figure(floor(i/5));
+            %hold on;
             for k = 1:size(obstacles)
             points = obstacles{k};
             scatter(points(1, :), points(2, :));
@@ -122,6 +130,7 @@ for i=1:N_points
         viscircles(obstacles_centers(1:2,:)', obstacles_centers(3,:)');
         end
     end
+
     
     [p_err, position] = vrep.simxGetObjectPosition(vrep_id, robot_pose,-1,vrep.simx_opmode_streaming);
     [o_err, orientation] = vrep.simxGetObjectOrientation(vrep_id, robot_pose,-1,vrep.simx_opmode_streaming);
@@ -162,6 +171,8 @@ for i=1:N_points
 
     pid = Kp*y_local + Ki*(acumulated_error + y_local); % steer correction
     acumulated_error = acumulated_error + y_local;
+    
+    %[mu_t,sigma_t] = execute_EKFSLAM(mu_t_1, sigma_t_1, u_t, z_t, c_t, R_t);
     
     [rm_err] = vrep.simxSetJointTargetVelocity(vrep_id,right_Motor,v_r(i) + pid,vrep.simx_opmode_oneshot );
     [lm_err] = vrep.simxSetJointTargetVelocity(vrep_id,left_Motor,v_l(i) - pid,vrep.simx_opmode_oneshot );
@@ -253,10 +264,11 @@ function [obstacles_centers] = get_obstacle_centers(obstacles)
     end
 end
 
-function [z_t] = get_z_from_obstacle_centers(obstacle_centers, mu_bar)
-    z_t = zeros(2, size(point_cloud, 2));
-    for k = size(point_cloud, 2)
-    z_r = sqrt((point_cloud(1, k)-mu_bar(1))^2+(point_cloud(2, k)-mu_bar(2))^2);
+function [z_t] = get_z_from_obstacle_centers(obstacle_centers, mu_bar, point_cloud)
+    num_features = size(obstacle_centers, 2);
+    z_t = zeros(2, num_features);
+    for k = 1:num_features
+    z_r = sqrt((obstacle_centers(1, k)-mu_bar(1))^2+(obstacle_centers(2, k)-mu_bar(2))^2);
     z_phi = atan2(point_cloud(2, k)-mu_bar(2), point_cloud(1, k)-mu_bar(1)) - mu_bar(3);
     z_t(k) = [z_r; z_phi];
     end
@@ -272,7 +284,7 @@ function [mu_t,sigma_t] = execute_EKFSLAM(mu_t_1, sigma_t_1, u_t, z_t, c_t, R_t)
     [mu_bar, sigma_bar] = EKFSLAM_prediction(mu_t_1,0,0);
 
     % Correction
-    [mu_t, sigma_t] = EKFSLAM_correction(mu_bar, sigma_bar, );
+    %[mu_t, sigma_t] = EKFSLAM_correction(mu_bar, sigma_bar );
 
 end
 
