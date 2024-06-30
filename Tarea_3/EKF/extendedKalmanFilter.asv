@@ -137,22 +137,18 @@ for i=1:N_points
         obstacles = Apply_DBScan(point_cloud);
         obstacles_centers = get_obstacle_centers(obstacles);
         z_t = get_z_from_obstacle_centers(obstacles_centers, mu);
-        
-        disp("Num de obstaculos: ")
-        disp(size(obstacles_centers, 2))
-        % for radii =1:size(obstacles_centers, 2)
-        %     radii
-        % end
 
-        %if mod(i, 1) == 0
+        for radii =1:
+
+        if mod(i, 10) == 0
             %figure(floor(i/5));
             %hold on;
-        for k = 1:size(obstacles)
-        points = obstacles{k};
-        scatter(points(1, :), points(2, :));
-        end
+            for k = 1:size(obstacles)
+            points = obstacles{k};
+            scatter(points(1, :), points(2, :));
+            end
         viscircles(obstacles_centers(1:2,:)', obstacles_centers(3,:)');
-        %end
+        end
     end
 
     x_acum(i) = x_real;
