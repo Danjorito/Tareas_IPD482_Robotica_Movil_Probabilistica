@@ -49,26 +49,26 @@ vrep_id = vrep.simxStart('127.0.0.1', 19000, true, true, 5000, 5);
 % SLAM
 delta_t = 0.1; % Delta t
  % Number of obstacles/landmarks
-radius_error = 0.15;
+radius_error = 0.09;
 
 
 % SLAM RELATED
 
-landmark_1 = [-1,-1];
-landmark_2 = [0,0];
-landmark_3 = [0,0];
-landmark_4 = [0,0];
+landmark_1 = [1,1];
+landmark_2 = [-1,-1];
+landmark_3 = [-1,1];
+landmark_4 = [1,-1];
 landmark_5 = [0,0];
 
 init_x      = -4;
 init_y      = 0;
 init_theta  = pi/2;    % persona1: Radianes o Grados? persona2: si persona3: 🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️ Radianes RAHHHHH !!!!!!!!!!!!!!!!!!!!! 🔥🔥🔥🔥🔥 PERSONA MENTIONED????????????????????????? 🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🔥🔥🔥🔥🔥🔥🔥
 
-sigma_r     = 1000;
-sigma_phi   = 1000;
+sigma_r     = 10;
+sigma_phi   = 10;
 N = 5; 
 Q = [sigma_r 0; 0 sigma_phi];
-R_t = diag([0.1, 0.1, 0.1]);
+R_t = diag([0.0000001, 0.0000001, 0.0000001]);
 
 seen_landmark_mu = NaN(2,2*N);
 
@@ -87,7 +87,7 @@ mu_0 = [init_pose(1), init_pose(2), init_pose(3), ...
 dim = 2*N+3;
 sigma_0 = zeros(dim, dim); % Crea la matriz de ceros
 for i = 4:dim
-    sigma_0(i, i) = 1000;
+    sigma_0(i, i) = 100000000^2;
 end
 
 
@@ -114,7 +114,7 @@ seen_correspondences = [0 ; 0]; % [radius, correspondence_value]
 for i=1:N_points
     %clf; % Limpiar la figura para dibujar la nueva pose
     hold on;
-
+    disp(seen_landmark_mu);
     
     [p_err, position] = vrep.simxGetObjectPosition(vrep_id, robot_pose,-1,vrep.simx_opmode_streaming);
     [o_err, orientation] = vrep.simxGetObjectOrientation(vrep_id, robot_pose,-1,vrep.simx_opmode_streaming);
@@ -234,7 +234,7 @@ for i=1:N_points
     [lm_err] = vrep.simxSetJointTargetVelocity(vrep_id,left_Motor,v_l(i) - pid,vrep.simx_opmode_oneshot );
 
 
-    pause(3.1*T_k)
+    pause(2*T_k)
 end
 
 [rm_err] = vrep.simxSetJointTargetVelocity(vrep_id,right_Motor,0,vrep.simx_opmode_oneshot );
@@ -318,6 +318,8 @@ function [z_t] = get_z_from_obstacle_centers(obstacle_centers, mu_bar)
     for k = 1:num_features
     z_r = sqrt((obstacle_centers(1, k)-mu_bar(1))^2+(obstacle_centers(2, k)-mu_bar(2))^2);
     z_phi = atan2(obstacle_centers(2, k)-mu_bar(2), obstacle_centers(1, k)-mu_bar(1)) - mu_bar(3);
+    disp(atan2(obstacle_centers(2, k)-mu_bar(2), obstacle_centers(1, k)-mu_bar(1)))
+    disp(mu_bar(3))
     z_t(1,k) = z_r;
     z_t(2,k) = z_phi;
     %z_t(k) = [z_r; z_phi];
@@ -369,7 +371,7 @@ function [mu_bar, sigma_bar] = EKFSLAM_prediction(mu, sigma, linear_velocity, an
 end
 
 function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(mu_bar, sigma_bar, seen_landmark_mu, z_t, Q)
-    disp(z_t);
+    %disp(z_t);
     if exist("z_t", "var")
         disp("Entre");
         N = 5;
@@ -383,8 +385,7 @@ function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(
             j     = z_t(3,feature); % c_t^i
             
             fprintf("For feature %d, j = %d \n", feature, j)
-            %disp("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
-    
+                
             if isnan(seen_landmark_mu(1,j))
                 seen_landmark_mu(1,j)   = mu_bar(1) + range*cos(bear + mu_bar(3));
                 seen_landmark_mu(2,j)   = mu_bar(2) + range*sin(bear + mu_bar(3));
@@ -404,7 +405,7 @@ function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(
             F_xj(1,1) = 1;
             F_xj(2,2) = 1;
             F_xj(3,3) = 1;
-    
+
             F_xj(4, 2*j+2) = 1;
             F_xj(5, 2*j+3) = 1;
             
@@ -444,6 +445,7 @@ function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(
 end
 
 function [obstacles] = Apply_DBScan(point_cloud)
+
 
     x = point_cloud(1,:); y = point_cloud(2,:); z = point_cloud(3,:);
     

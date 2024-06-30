@@ -49,26 +49,26 @@ vrep_id = vrep.simxStart('127.0.0.1', 19000, true, true, 5000, 5);
 % SLAM
 delta_t = 0.1; % Delta t
  % Number of obstacles/landmarks
-radius_error = 0.15;
+radius_error = 0.09;
 
 
 % SLAM RELATED
 
-landmark_1 = [-1,-1];
-landmark_2 = [0,0];
-landmark_3 = [1,-1];
-landmark_4 = [-1,1];
-landmark_5 = [0.5,-1];
+landmark_1 = [1,1];
+landmark_2 = [-1,-1];
+landmark_3 = [-1,1];
+landmark_4 = [1,-1];
+landmark_5 = [0,0];
 
 init_x      = -4;
 init_y      = 0;
 init_theta  = pi/2;    % persona1: Radianes o Grados? persona2: si persona3: 🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️ Radianes RAHHHHH !!!!!!!!!!!!!!!!!!!!! 🔥🔥🔥🔥🔥 PERSONA MENTIONED????????????????????????? 🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🔥🔥🔥🔥🔥🔥🔥
 
-sigma_r     = 0.1;
-sigma_phi   = 0.1;
+sigma_r     = 10;
+sigma_phi   = 10;
 N = 5; 
 Q = [sigma_r 0; 0 sigma_phi];
-R_t = diag([0.1, 0.1, 0.1]);
+R_t = diag([0.0000001, 0.0000001, 0.0000001]);
 
 seen_landmark_mu = NaN(2,2*N);
 
@@ -183,9 +183,6 @@ for i=1:N_points
                 roboc = scatter(mu(1,1), mu(2,1));
                 for lmk_i=1:N
                     %text(mu(lmk_i + 3,1), mu(lmk_i + 4,1), num2str(lmk_i),'HorizontalAlignment', 'center','VerticalAlignment', 'middle', 'FontSize', 12, 'Color', 'r');
-                    if exist("obsta", "var") == 1
-                        %delete(obsta)
-                    end
                     obsta = scatter(mu(2+2*lmk_i,1), mu(3+2*lmk_i,1), 100 ,colormap(lmk_i), 'd');
                     
                 end
@@ -237,7 +234,7 @@ for i=1:N_points
     [lm_err] = vrep.simxSetJointTargetVelocity(vrep_id,left_Motor,v_l(i) - pid,vrep.simx_opmode_oneshot );
 
 
-    pause(3.1*T_k)
+    pause(2.5*T_k)
 end
 
 [rm_err] = vrep.simxSetJointTargetVelocity(vrep_id,right_Motor,0,vrep.simx_opmode_oneshot );
@@ -312,6 +309,7 @@ function [obstacles_centers] = get_obstacle_centers(obstacles)
     
         e(:, n_cluster) = regress(Y', X);
         obstacles_centers(:, n_cluster) = [e(1, n_cluster), e(2, n_cluster), sqrt(e(1, n_cluster)^2 + e(2, n_cluster)^2 + e(3, n_cluster))];
+        disp(obstacles_centers(:, n_cluster))
     end
 end
 
@@ -372,7 +370,7 @@ function [mu_bar, sigma_bar] = EKFSLAM_prediction(mu, sigma, linear_velocity, an
 end
 
 function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(mu_bar, sigma_bar, seen_landmark_mu, z_t, Q)
-    disp(z_t);
+    %disp(z_t);
     if exist("z_t", "var")
         disp("Entre");
         N = 5;
@@ -386,8 +384,7 @@ function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(
             j     = z_t(3,feature); % c_t^i
             
             fprintf("For feature %d, j = %d \n", feature, j)
-            %disp("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
-    
+                
             if isnan(seen_landmark_mu(1,j))
                 seen_landmark_mu(1,j)   = mu_bar(1) + range*cos(bear + mu_bar(3));
                 seen_landmark_mu(2,j)   = mu_bar(2) + range*sin(bear + mu_bar(3));
@@ -400,14 +397,14 @@ function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(
             delta_y = mu_jy - mu_bar(2);
             delta = [delta_x ; delta_y];
             q = delta'*delta;
-            z_hat = [sqrt(q) ; atan2(delta_y,delta_x)- mu_bar(3)];
+            z_hat = [sqrt(q) ; normalize_angle(atan2(delta_y,delta_x)- mu_bar(3))];
             
     
             F_xj = zeros(5, 5 + 2*N-2);
             F_xj(1,1) = 1;
             F_xj(2,2) = 1;
             F_xj(3,3) = 1;
-    
+
             F_xj(4, 2*j+2) = 1;
             F_xj(5, 2*j+3) = 1;
             
@@ -446,7 +443,17 @@ function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(
     end
 end
 
+function theta = normalize_angle(theta)
+    if theta > pi
+        theta = theta - 2pi;
+    end
+    if theta < -pi
+        theta = theta + 2pi;
+    end
+end
+
 function [obstacles] = Apply_DBScan(point_cloud)
+
 
     x = point_cloud(1,:); y = point_cloud(2,:); z = point_cloud(3,:);
     
