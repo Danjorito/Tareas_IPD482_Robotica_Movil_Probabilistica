@@ -49,12 +49,12 @@ vrep_id = vrep.simxStart('127.0.0.1', 19000, true, true, 5000, 5);
 % SLAM
 delta_t = 0.1; % Delta t
  % Number of obstacles/landmarks
-radius_error = 0.3;
+radius_error = 0.15;
 
 
 % SLAM RELATED
 
-landmark_1 = [0,0];
+landmark_1 = [-1,-1];
 landmark_2 = [0,0];
 landmark_3 = [0,0];
 landmark_4 = [0,0];
@@ -64,8 +64,8 @@ init_x      = -4;
 init_y      = 0;
 init_theta  = pi/2;    % persona1: Radianes o Grados? persona2: si persona3: 🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️ Radianes RAHHHHH !!!!!!!!!!!!!!!!!!!!! 🔥🔥🔥🔥🔥 PERSONA MENTIONED????????????????????????? 🗣️🗣️🗣️🗣️🗣️🗣️🗣️🗣️🔥🔥🔥🔥🔥🔥🔥
 
-sigma_r     = 0.1;
-sigma_phi   = 0.1;
+sigma_r     = 1000;
+sigma_phi   = 1000;
 N = 5; 
 Q = [sigma_r 0; 0 sigma_phi];
 R_t = diag([0.1, 0.1, 0.1]);
@@ -109,14 +109,12 @@ mu = mu_0';
 sigma = sigma_0;
 
 seen_correspondences = [0 ; 0]; % [radius, correspondence_value]
-
+%z_t = [0;0;0];
     
 for i=1:N_points
     %clf; % Limpiar la figura para dibujar la nueva pose
     hold on;
 
-    
-    z_t = [0;0;0];
     
     [p_err, position] = vrep.simxGetObjectPosition(vrep_id, robot_pose,-1,vrep.simx_opmode_streaming);
     [o_err, orientation] = vrep.simxGetObjectOrientation(vrep_id, robot_pose,-1,vrep.simx_opmode_streaming);
@@ -160,8 +158,11 @@ for i=1:N_points
             end
 
             if c_i == -1 % If no correspondence was found
-                new_c = [radius; seen_correspondences(2, end) + 1]; 
+                new_c = [radius; seen_correspondences(2, end) + 1];
                 seen_correspondences = [seen_correspondences, new_c]; % Add the new correspondence
+                if seen_correspondences(:, 1) == [0, 0]
+                    seen_correspondences = seen_correspondences(:, 2,end)
+                end
                 z_t(3, radius_index) = new_c(2,1);
             end
 
@@ -179,11 +180,12 @@ for i=1:N_points
             for k = 1:size(obstacles)
                 points = obstacles{k};
                 scatter(points(1, :), points(2, :));
-                scatter(mu(1,1), mu(2,1))
-                % for lmk_i=1:N
-                %     %text(mu(lmk_i + 3,1), mu(lmk_i + 4,1), num2str(lmk_i),'HorizontalAlignment', 'center','VerticalAlignment', 'middle', 'FontSize', 12, 'Color', 'r');
-                %     scatter(mu(2+2*lmk_i,1), mu(3+2*lmk_i,1), 100 ,colormap(lmk_i), 'd')
-                % end
+                roboc = scatter(mu(1,1), mu(2,1));
+                for lmk_i=1:N
+                    %text(mu(lmk_i + 3,1), mu(lmk_i + 4,1), num2str(lmk_i),'HorizontalAlignment', 'center','VerticalAlignment', 'middle', 'FontSize', 12, 'Color', 'r');
+                    obsta = scatter(mu(2+2*lmk_i,1), mu(3+2*lmk_i,1), 100 ,colormap(lmk_i), 'd');
+                    
+                end
                 
             end
             viscircles(obstacles_centers(1:2,:)', obstacles_centers(3,:)');
@@ -193,6 +195,7 @@ for i=1:N_points
     x_acum(i) = x_real;
     y_acum(i) = y_real;
     theta_acum(i) = angle;
+    disp(i)
     min_dist = inf;
 
     % Nearest point to the robot
@@ -236,14 +239,6 @@ end
 
 [rm_err] = vrep.simxSetJointTargetVelocity(vrep_id,right_Motor,0,vrep.simx_opmode_oneshot );
 [lm_err] = vrep.simxSetJointTargetVelocity(vrep_id,left_Motor,0,vrep.simx_opmode_oneshot );
-
-%lin_vel_test = 0.1;
-%ang_vel_test = 0.1;
-%[mu_bar, sigma_bar] = EKFSLAM_prediction(mu_0, sigma_0, lin_vel_test, ang_vel_test, N, delta_t, R);
-%mu_test = [1 1 pi/4 1 1 2 2 3 3 4 4 5 5];
-%z_test = [1 2 3 4 5; 9 8 7 6 5];
-%c_test = [1 2 3 4 5];
-%a = EKFSLAM_correction(mu_bar, sigma_bar, seen_landmark_mu ,z_test, c_test, Q);
 
 %***********************************************************************************************************************************************************
 %***********************************************      FUNCIONES       **************************************************************************************
@@ -349,14 +344,13 @@ function [mu_t,sigma_t, updated_lmk] = execute_EKFSLAM(mu_t_1, sigma_t_1, u_t, z
 end
 
 function [mu_bar, sigma_bar] = EKFSLAM_prediction(mu, sigma, linear_velocity, angular_velocity, N, delta_t, R)
-    % Ver como hacemo esto
-    
-    F_x = [ eye(3,3) , zeros(3, 2*N)];
+
+    F_x = [eye(3,3) , zeros(3, 2*N)];
     model = [-linear_velocity/angular_velocity*sin(mu(3)) + linear_velocity/angular_velocity*sin(mu(3) + angular_velocity*delta_t); ...
              linear_velocity/angular_velocity*cos(mu(3)) - linear_velocity/angular_velocity*cos(mu(3) + angular_velocity*delta_t); ...
              angular_velocity*delta_t];
     
-
+    
     mu_bar = mu + F_x'*model;
     
     % Derivation of G_t
@@ -366,7 +360,7 @@ function [mu_bar, sigma_bar] = EKFSLAM_prediction(mu, sigma, linear_velocity, an
     Gtx(2,3) =  model(1);
     
     I = eye(2*N);
-    Gt = zeros(size(Gtx) + size(I));
+    Gt = zeros(size(Gtx) + size(I)); %13 x 13
     Gt(1:size(Gtx,1), 1:size(Gtx,2)) = Gtx;
     Gt(size(Gtx,1)+1:end, size(Gtx,2)+1:end) = I;
     
@@ -375,7 +369,9 @@ function [mu_bar, sigma_bar] = EKFSLAM_prediction(mu, sigma, linear_velocity, an
 end
 
 function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(mu_bar, sigma_bar, seen_landmark_mu, z_t, Q)
-    if z_t ~= [0;0;0]
+    disp(z_t);
+    if exist("z_t", "var")
+        disp("Entre");
         N = 5;
         mu = mu_bar;
         sigma = sigma_bar;
@@ -387,6 +383,7 @@ function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(
             j     = z_t(3,feature); % c_t^i
             
             fprintf("For feature %d, j = %d \n", feature, j)
+            %disp("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH")
     
             if isnan(seen_landmark_mu(1,j))
                 seen_landmark_mu(1,j)   = mu_bar(1) + range*cos(bear + mu_bar(3));
