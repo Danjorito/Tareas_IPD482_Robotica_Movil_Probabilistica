@@ -180,7 +180,7 @@ for i=1:N_points
             for k = 1:size(obstacles)
                 points = obstacles{k};
                 scatter(points(1, :), points(2, :));
-                roboc = scatter(mu(1,1), mu(2,1));
+                roboc = scatter(mu(1,1), mu(2,1), 'blue');
                 for lmk_i=1:N
                     %text(mu(lmk_i + 3,1), mu(lmk_i + 4,1), num2str(lmk_i),'HorizontalAlignment', 'center','VerticalAlignment', 'middle', 'FontSize', 12, 'Color', 'r');
                     obsta = scatter(mu(2+2*lmk_i,1), mu(3+2*lmk_i,1), 100 ,colormap(lmk_i), 'd');
