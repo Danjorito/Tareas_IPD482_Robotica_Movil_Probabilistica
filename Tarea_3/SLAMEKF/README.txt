@@ -1,0 +1,1 @@
+Para correr el código se debe abrir la escena "EKFSLAM.ttt" y luego se debe correr el archivo de Matlab "extendedKalmanFilter.m"
