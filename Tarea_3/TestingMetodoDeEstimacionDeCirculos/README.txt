@@ -1,0 +1,1 @@
+Si se desea testear el algoritmo que genera los círculos a partir de las nubes de puntos se debe abrir la escena y poner a simular "EKFSLAM.ttt" luego se debe correr el script de Matlab "ObstacleCentersTest.m"
