@@ -4,7 +4,7 @@ clc; close all; clear all;
 %***********************************************        SETUP         **************************************************************************************
 %***********************************************************************************************************************************************************
 
-
+z_ruido = 1;  %CAMBIAR ESTA VARIABLE POR 1 SI SE DESEA RUIDO, PARA EL CASO SIN RUIDO SE DEBE DEJAR EN 0.
 % Robot
 L = 0.381;
 
@@ -136,7 +136,7 @@ for i=1:N_points
         point_cloud = get_lidar_measurement(vrep, vrep_id, camhandle);
         obstacles = Apply_DBScan(point_cloud);
         obstacles_centers = get_obstacle_centers(obstacles);
-        z_t = get_z_from_obstacle_centers(obstacles_centers, mu);
+        z_t = get_z_from_obstacle_centers(obstacles_centers, mu, z_ruido);
         
         z_t = [z_t; zeros(1, size(z_t,2))]; % add new row for correspondence
 
@@ -183,12 +183,12 @@ for i=1:N_points
                 roboc = scatter(mu(1,1), mu(2,1), 'blue');
                 for lmk_i=1:N
                     %text(mu(lmk_i + 3,1), mu(lmk_i + 4,1), num2str(lmk_i),'HorizontalAlignment', 'center','VerticalAlignment', 'middle', 'FontSize', 12, 'Color', 'r');
-                    obsta = scatter(mu(2+2*lmk_i,1), mu(3+2*lmk_i,1), 100 ,colormap(lmk_i), 'd');
+                    obsta = scatter(mu(2+2*lmk_i,1), mu(3+2*lmk_i,1), 10 ,colormap(lmk_i), '*');
                     
                 end
                 
             end
-            viscircles(obstacles_centers(1:2,:)', obstacles_centers(3,:)');
+            %viscircles(obstacles_centers(1:2,:)', obstacles_centers(3,:)');
         end
     end
 
@@ -312,22 +312,25 @@ function [obstacles_centers] = get_obstacle_centers(obstacles)
     end
 end
 
-function [z_t] = get_z_from_obstacle_centers(obstacle_centers, mu_bar)
+function [z_t] = get_z_from_obstacle_centers(obstacle_centers, mu_bar, z_ruido)
     num_features = size(obstacle_centers, 2);
     z_t = zeros(2, num_features);
     for k = 1:num_features
-    z_r = sqrt((obstacle_centers(1, k)-mu_bar(1))^2+(obstacle_centers(2, k)-mu_bar(2))^2);
-    z_phi = atan2(obstacle_centers(2, k)-mu_bar(2), obstacle_centers(1, k)-mu_bar(1)) - mu_bar(3);
-    disp(atan2(obstacle_centers(2, k)-mu_bar(2), obstacle_centers(1, k)-mu_bar(1)))
-    disp(mu_bar(3))
-    z_t(1,k) = z_r;
-    z_t(2,k) = z_phi;
-    %z_t(k) = [z_r; z_phi];
+        z_r = sqrt((obstacle_centers(1, k)-mu_bar(1))^2+(obstacle_centers(2, k)-mu_bar(2))^2);
+        z_phi = atan2(obstacle_centers(2, k)-mu_bar(2), obstacle_centers(1, k)-mu_bar(1)) - mu_bar(3);
+        if z_ruido == 0
+            z_t(1,k) = z_r;
+            z_t(2,k) = z_phi;
+        else
+            ruido_r = wgn(1, 1, -30);
+            ruido_phi = wgn (1, 1, -30);
+            z_t(1,k) = z_r + ruido_r;
+            z_t(2,k) = z_phi + ruido_phi;
+        end
     end
 end
 
 function [mu_t,sigma_t, updated_lmk] = execute_EKFSLAM(mu_t_1, sigma_t_1, u_t, z_t, lmk, R_t, Q)
-    disp("Performing EKF, trust me"); %SACAR ESTO, o no, da lo mismo en realidad
     % Covariance Matrix Q and R
     %R = eye(size(mu_t_1));  % Covariance of motion
     %Q = eye(size(z_t));     % Covariance of observation
