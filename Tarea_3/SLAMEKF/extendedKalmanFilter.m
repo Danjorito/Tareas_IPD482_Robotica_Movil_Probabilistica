@@ -48,7 +48,6 @@ vrep_id = vrep.simxStart('127.0.0.1', 19000, true, true, 5000, 5);
 
 % SLAM
 delta_t = 0.1; % Delta t
- % Number of obstacles/landmarks
 radius_error = 0.09;
 
 
@@ -114,8 +113,7 @@ seen_correspondences = [0 ; 0]; % [radius, correspondence_value]
 for i=1:N_points
     %clf; % Limpiar la figura para dibujar la nueva pose
     hold on;
-    disp(seen_landmark_mu);
-    
+        
     [p_err, position] = vrep.simxGetObjectPosition(vrep_id, robot_pose,-1,vrep.simx_opmode_streaming);
     [o_err, orientation] = vrep.simxGetObjectOrientation(vrep_id, robot_pose,-1,vrep.simx_opmode_streaming);
     angle = orientation(3);
@@ -129,7 +127,6 @@ for i=1:N_points
         y_real = position(2);
     end
     
-    %mu = [x_real, y_real,angle];
 
     if i ~= 1   
         
@@ -140,8 +137,6 @@ for i=1:N_points
         
         z_t = [z_t; zeros(1, size(z_t,2))]; % add new row for correspondence
 
-        %disp("Num de obstaculos: ")
-        %disp(size(obstacles_centers, 2))
         
         
         
@@ -172,30 +167,26 @@ for i=1:N_points
         fprintf("seen obstacles: %d\n", size(obstacles_centers, 2))
         fprintf("seen correspondences: %d\n", size(seen_correspondences, 2)-1)
         
-        colormap = ["red", "blue", "green", "black", "magenta"];
-
         if mod(i, 1) == 0
-                %figure(floor(i/5));
-                %hold on;
+
             for k = 1:size(obstacles)
                 points = obstacles{k};
                 scatter(points(1, :), points(2, :));
                 roboc = scatter(mu(1,1), mu(2,1), 'blue');
                 for lmk_i=1:N
-                    %text(mu(lmk_i + 3,1), mu(lmk_i + 4,1), num2str(lmk_i),'HorizontalAlignment', 'center','VerticalAlignment', 'middle', 'FontSize', 12, 'Color', 'r');
+                    
                     obsta = scatter(mu(2+2*lmk_i,1), mu(3+2*lmk_i,1), 10 ,colormap(lmk_i), '*');
                     
                 end
                 
             end
-            %viscircles(obstacles_centers(1:2,:)', obstacles_centers(3,:)');
+
         end
     end
 
     x_acum(i) = x_real;
     y_acum(i) = y_real;
     theta_acum(i) = angle;
-    disp(i)
     min_dist = inf;
 
     % Nearest point to the robot
@@ -290,7 +281,6 @@ function [point_cloud] = get_lidar_measurement(vrep, vrep_id, camhandle)  %point
         full_vect = cat(2, full_vect, RealValue);
         pause(0.1)
     end
-    %k = 3*10000;
     full_vect = full_vect(2:end);
     M = length(full_vect) / 3;
     point_cloud = reshape(full_vect, [3, M]);
@@ -332,17 +322,12 @@ end
 
 function [mu_t,sigma_t, updated_lmk] = execute_EKFSLAM(mu_t_1, sigma_t_1, u_t, z_t, lmk, R_t, Q)
     % Covariance Matrix Q and R
-    %R = eye(size(mu_t_1));  % Covariance of motion
-    %Q = eye(size(z_t));     % Covariance of observation
     N = 5;
     delta_t = 0.1;
 
     % Prediction
     [mu_bar, sigma_bar] = EKFSLAM_prediction(mu_t_1,sigma_t_1,u_t(1), u_t(2), N, delta_t, R_t);
     
-    %mu_bar
-    %mu_t = mu_bar;
-    %sigma_t = sigma_bar;
     % Correction
     [mu_t, sigma_t, updated_lmk] = EKFSLAM_correction(mu_bar, sigma_bar, lmk, z_t, Q );
 
@@ -374,9 +359,7 @@ function [mu_bar, sigma_bar] = EKFSLAM_prediction(mu, sigma, linear_velocity, an
 end
 
 function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(mu_bar, sigma_bar, seen_landmark_mu, z_t, Q)
-    %disp(z_t);
     if exist("z_t", "var")
-        disp("Entre");
         N = 5;
         mu = mu_bar;
         sigma = sigma_bar;
@@ -416,23 +399,6 @@ function [corrected_mu, corrected_sigma, seen_landmark_mu] = EKFSLAM_correction(
     
             K_t = sigma_bar*H_t'*pinv(H_t*sigma_bar*H_t' + Q);
             zt = z_t(1:2,feature);
-            
-            % disp("Shape of zt")
-            % disp(size(zt))
-            % 
-            % disp("Shape of mu")
-            % disp(size(mu))
-            % 
-            % disp("Shape of Kt")
-            % disp(size(K_t))
-            % 
-            % disp("Shape of z_hat")
-            % disp(size(z_hat))
-            % 
-            % aa = K_t*(zt - z_hat);
-            % 
-            % disp("Shape of the other thing")
-            % disp(size(aa))
 
             mu = mu + K_t*(zt - z_hat);
             KH = K_t*H_t;
@@ -463,18 +429,9 @@ function [obstacles] = Apply_DBScan(point_cloud)
     minpts = 3;
     idx = dbscan([filtered_x',filtered_y'], epsilon, minpts);
 
-    % Plot points (OPTIONAL)
-    %figure;
-    %scatter(filtered_x, filtered_y, 10, idx, 'filled');
-    %xlabel('X [m]');
-    %ylabel('Y [m]');
-    %title('DBSCAN Results');
-    %colorbar;
-
     % Create obstacle polygons
     unique_clusters = unique(idx(idx > 0)); % Ignore Noise (Cluster with a '0' label)
     
-    %fprintf('Quantity of unique clusters: %d\n', length(unique_clusters));
     if isempty(unique_clusters)
         fprintf('No clusters found\n');
     end
