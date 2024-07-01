@@ -11,13 +11,13 @@ vrep_id = vrep.simxStart('127.0.0.1', 19000, true, true, 5000, 5);
 
 
 
-for n = 1:5
-    point_cloud = get_lidar_measurement(vrep, vrep_id, camhandle);
-    disp(length(point_cloud));
-    obstacles = Apply_DBScan(point_cloud);
-    centros = get_obstacle_centers(obstacles);
-    pause(1);
-end
+
+point_cloud = get_lidar_measurement(vrep, vrep_id, camhandle);
+disp(length(point_cloud));
+obstacles = Apply_DBScan(point_cloud);
+centros = get_obstacle_centers(obstacles);
+pause(1);
+
 
 figure(3)
 hold on;
